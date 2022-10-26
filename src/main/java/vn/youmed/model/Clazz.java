@@ -12,6 +12,12 @@ public class Clazz {
 	@JsonProperty("name")
 	private String name;
 
+	@JsonProperty("maximum")
+	private int maximum;
+
+	@JsonProperty("total")
+	private int total;
+
 	@JsonProperty("specility_id")
 	private String speciality_id;
 
@@ -21,6 +27,8 @@ public class Clazz {
 	public Clazz(JsonObject jsonObject) {
 		this._id = jsonObject.getString("_id");
 		this.name = jsonObject.getString("name");
+		this.maximum = jsonObject.getInteger("maximum");
+		this.total = jsonObject.getInteger("total");
 		this.speciality_id = jsonObject.getString("speciality_id");
 
 	}
@@ -47,6 +55,22 @@ public class Clazz {
 
 	public String get_id() {
 		return _id;
+	}
+
+	public int getMaximum() {
+		return maximum;
+	}
+
+	public void setMaximum(int maximum) {
+		this.maximum = maximum;
+	}
+
+	public int getTotal() {
+		return total;
+	}
+
+	public void setTotal(int total) {
+		this.total = total;
 	}
 
 }

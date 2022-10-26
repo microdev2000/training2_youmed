@@ -26,8 +26,8 @@ public class StudentService implements StudentRepository {
 		String limitId = JsonObject.mapFrom(student).getString("clazzId");
 		return Single.create(result -> {
 			Future<Boolean> checkLimit = Future.future();
-			LimitService limitService = new LimitService(client);
-			limitService.limitAction(limitId, checkLimit, LimitAction.INCREASE);
+			ClazzService clazzService = new ClazzService(client);
+			clazzService.limitAction(limitId, checkLimit, LimitAction.INCREASE);
 			checkLimit.setHandler(res -> {
 				if (res.failed()) {
 					result.onError(new Exception(res.cause().getMessage()));
@@ -112,7 +112,7 @@ public class StudentService implements StudentRepository {
 
 			JsonObject query = new JsonObject();
 			query.put("_id", clazzId);
-			new LimitService(client).limitAction(clazzId, future, LimitAction.REDUCED);
+			new ClazzService(client).limitAction(clazzId, future, LimitAction.REDUCED);
 			future.setHandler(res -> {
 				if (res.failed()) {
 					result.onError(new Exception(res.cause().getMessage()));
