@@ -35,7 +35,7 @@ public class StudentService implements StudentRepository {
 					client.insert(Collection.STUDENT, JsonObject.mapFrom(student), res2 -> {
 						if (res2.succeeded()) {
 							if (res2.result() == null) {
-								result.onError(new Exception("Student already exist1"));
+								result.onError(new Exception("Student already exist"));
 							} else {
 								result.onSuccess(new JsonObject(res2.result()));
 							}
