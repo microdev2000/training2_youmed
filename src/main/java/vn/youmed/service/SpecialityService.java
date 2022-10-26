@@ -1,26 +1,21 @@
 package vn.youmed.service;
 
-import java.nio.channels.AlreadyBoundException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.NoSuchElementException;
 
 import io.reactivex.Single;
-import io.vertx.core.AbstractVerticle;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.mongo.MongoClient;
-import vn.youmed.config.DBConfig;
 import vn.youmed.constant.Collection;
-import vn.youmed.model.Clazz;
 import vn.youmed.model.Speciality;
 import vn.youmed.repository.SpecialityRepsotory;
 
-public class SpecialityService extends AbstractVerticle implements SpecialityRepsotory {
-	static MongoClient client;
+public class SpecialityService implements SpecialityRepsotory {
+	private final MongoClient client;
 
-	@Override
-	public void start() {
-		client = MongoClient.createShared(vertx, DBConfig.dbConfig());
+	public SpecialityService(MongoClient client) {
+		this.client = client;
 	}
 
 	@Override
@@ -34,7 +29,7 @@ public class SpecialityService extends AbstractVerticle implements SpecialityRep
 						result.onSuccess(new JsonObject(res.result()));
 					}
 				} else {
-					System.out.println(res.cause());
+					result.onError(new Exception("System error, please try again later!"));
 				}
 			});
 		});
@@ -51,7 +46,7 @@ public class SpecialityService extends AbstractVerticle implements SpecialityRep
 						result.onSuccess(res.result());
 					}
 				} else {
-					System.out.println(res.cause());
+					result.onError(new Exception("System error, please try again later!"));
 				}
 			});
 		});
@@ -71,7 +66,7 @@ public class SpecialityService extends AbstractVerticle implements SpecialityRep
 					}
 
 				} else {
-					System.out.println(res.cause());
+					result.onError(new Exception("System error, please try again later!"));
 				}
 			});
 
@@ -95,7 +90,7 @@ public class SpecialityService extends AbstractVerticle implements SpecialityRep
 					}
 
 				} else {
-					System.out.println(res.cause());
+					result.onError(new Exception("System error, please try again later!"));
 				}
 			});
 
@@ -116,7 +111,7 @@ public class SpecialityService extends AbstractVerticle implements SpecialityRep
 					}
 
 				} else {
-					System.out.println(res.cause());
+					result.onError(new Exception("System error, please try again later!"));
 				}
 			});
 

@@ -1,28 +1,39 @@
 package vn.youmed.router;
 
+import java.io.IOException;
+
+import org.xml.sax.SAXException;
+
 import io.vertx.core.AbstractVerticle;
 import io.vertx.core.http.HttpServer;
 import io.vertx.core.json.Json;
 import io.vertx.core.json.JsonObject;
+import io.vertx.ext.mongo.MongoClient;
 import io.vertx.ext.web.Router;
 import io.vertx.ext.web.RoutingContext;
+import io.vertx.ext.web.handler.BodyHandler;
+import vn.youmed.config.DBConfig;
 import vn.youmed.model.Speciality;
 import vn.youmed.service.SpecialityService;
 
 public class SpecialityRouter extends AbstractVerticle {
 
 	private SpecialityService specialityService;
+	private MongoClient client;
+
 
 	@Override
-	public void start() {
-		specialityService = new SpecialityService();
+	public void start() throws SAXException, IOException {
+		client = MongoClient.createShared(vertx, DBConfig.dbConfig());
+		specialityService = new SpecialityService(client);
 		HttpServer server = vertx.createHttpServer();
 		Router specRouter = Router.router(vertx);
-		specRouter.post("/speciality/add").handler(this::addSpeciality);
-		specRouter.get("/speciality/get/all").handler(this::getAll);
-		specRouter.get("/speciality/get/:specialityId").handler(this::getSpecialityById);
-		specRouter.put("/speciality/update/:specialityId").handler(this::updateSpeciality);
-		specRouter.delete("/speciality/delete/:specialityId").handler(this::deleteSpeciality);
+		specRouter.route("/api/v1/speciality/*").handler(BodyHandler.create());
+		specRouter.post("/api/v1/speciality/").handler(this::addSpeciality);
+		specRouter.get("/api/v1/speciality/").handler(this::getAll);
+		specRouter.get("/api/v1/speciality/:id").handler(this::getSpecialityById);
+		specRouter.put("/api/v1/speciality/:id").handler(this::updateSpeciality);
+		specRouter.delete("/api/v1/speciality/:id").handler(this::deleteSpeciality);
 		server.requestHandler(specRouter::accept).listen(4545);
 
 	}
@@ -45,7 +56,7 @@ public class SpecialityRouter extends AbstractVerticle {
 	}
 
 	private void getSpecialityById(RoutingContext rc) {
-		String specialityId = rc.request().getParam("clazzId");
+		String specialityId = rc.request().getParam("id");
 		specialityService.getSpecialityById(specialityId).subscribe(success -> {
 			onSuccessResponse(rc, 200, success);
 		}, error -> {
@@ -54,7 +65,7 @@ public class SpecialityRouter extends AbstractVerticle {
 	}
 
 	private void updateSpeciality(RoutingContext rc) {
-		String specialityId = rc.request().getParam("specialityId");
+		String specialityId = rc.request().getParam("id");
 		Speciality speciality = mapRequestBodyToSpeciality(rc);
 		specialityService.updateSpeciality(specialityId, speciality).subscribe(success -> {
 			onSuccessResponse(rc, 201, success);
@@ -64,7 +75,7 @@ public class SpecialityRouter extends AbstractVerticle {
 	}
 
 	private void deleteSpeciality(RoutingContext rc) {
-		String specialityId = rc.request().getParam("specialityId");
+		String specialityId = rc.request().getParam("id");
 		specialityService.deleteSpeciality(specialityId).subscribe(success -> {
 			onSuccessResponse(rc, 204, null);
 		}, error -> {
