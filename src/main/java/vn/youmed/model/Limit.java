@@ -2,6 +2,8 @@ package vn.youmed.model;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 
+import io.vertx.core.json.JsonObject;
+
 public class Limit {
 	@JsonProperty("_id")
 	private String _id;
@@ -11,6 +13,14 @@ public class Limit {
 
 	@JsonProperty("total")
 	private int total;
+	
+	public Limit() {}
+	
+	public Limit(JsonObject jsonObject) {
+		this._id = jsonObject.getString("_id");
+		this.maximum = jsonObject.getInteger("maximum");
+		this.total = jsonObject.getInteger("total");
+	}
 
 	public String get_id() {
 		return _id;

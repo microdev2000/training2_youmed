@@ -1,27 +1,37 @@
 package vn.youmed.router;
 
+import java.io.IOException;
+
+import org.xml.sax.SAXException;
+
 import io.vertx.core.AbstractVerticle;
 import io.vertx.core.http.HttpServer;
 import io.vertx.core.json.Json;
 import io.vertx.core.json.JsonObject;
+import io.vertx.ext.mongo.MongoClient;
 import io.vertx.ext.web.Router;
 import io.vertx.ext.web.RoutingContext;
-import vn.youmed.model.Clazz;
+import io.vertx.ext.web.handler.BodyHandler;
+import vn.youmed.config.DBConfig;
 import vn.youmed.model.Limit;
-import vn.youmed.service.ClazzService;
 import vn.youmed.service.LimitService;
 
 public class LimitRouter extends AbstractVerticle {
 
 	private LimitService limitService;
+	
+	private MongoClient client;
+
 
 	@Override
-	public void start() {
-		limitService = new LimitService();
+	public void start() throws SAXException, IOException {
+		client = MongoClient.createShared(vertx, DBConfig.dbConfig());
+		limitService = new LimitService(client);
 		HttpServer server = vertx.createHttpServer();
 		Router limitRouter = Router.router(vertx);
-		limitRouter.get("/limit/get/all").handler(this::getAll);
-		limitRouter.put("/limit/update/:limitId").handler(this::updateLimit);
+		limitRouter.route("/api/v1/limit/*").handler(BodyHandler.create());
+		limitRouter.get("/api/v1/limit/").handler(this::getAll);
+		limitRouter.put("/api/v1/limit/:id").handler(this::updateLimit);
 		server.requestHandler(limitRouter::accept).listen(4545);
 
 	}
@@ -35,7 +45,7 @@ public class LimitRouter extends AbstractVerticle {
 	}
 
 	private void updateLimit(RoutingContext rc) {
-		String limitId = rc.request().getParam("limitId");
+		String limitId = rc.request().getParam("id");
 		Limit limit = mapRequestBodyToLimit(rc);
 		limitService.updateLimit(limitId, limit).subscribe(success -> {
 			onSuccessResponse(rc, 201, success);

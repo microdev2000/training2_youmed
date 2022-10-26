@@ -2,12 +2,23 @@ package vn.youmed.model;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 
+import io.vertx.core.json.JsonObject;
+
 public class Speciality {
 	@JsonProperty("_id")
 	private String _id;
 
 	@JsonProperty("name")
 	private String name;
+
+	public Speciality() {
+	}
+
+	public Speciality(JsonObject jsonObject) {
+		this._id = jsonObject.getString("_id");
+		this.name = jsonObject.getString("name");
+
+	}
 
 	public String get_id() {
 		return _id;

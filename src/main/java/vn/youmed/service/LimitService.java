@@ -5,21 +5,20 @@ import java.util.List;
 import java.util.NoSuchElementException;
 
 import io.reactivex.Single;
-import io.vertx.core.AbstractVerticle;
+import io.vertx.core.Future;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.mongo.MongoClient;
-import vn.youmed.config.DBConfig;
 import vn.youmed.constant.Collection;
+import vn.youmed.constant.LimitAction;
 import vn.youmed.model.Limit;
 import vn.youmed.repository.LimitRepository;
 
-public class LimitService extends AbstractVerticle implements LimitRepository {
+public class LimitService implements LimitRepository {
 
-	static MongoClient client;
+	private final MongoClient client;
 
-	@Override
-	public void start() {
-		client = MongoClient.createShared(vertx, DBConfig.dbConfig());
+	public LimitService(MongoClient client) {
+		this.client = client;
 	}
 
 	@Override
@@ -33,7 +32,7 @@ public class LimitService extends AbstractVerticle implements LimitRepository {
 						result.onSuccess(res.result());
 					}
 				} else {
-					System.out.println(res.cause());
+					result.onError(new Exception("System error, please try again later!"));
 				}
 			});
 		});
@@ -41,8 +40,6 @@ public class LimitService extends AbstractVerticle implements LimitRepository {
 
 	@Override
 	public Single<JsonObject> updateLimit(String limitId, Limit limit) {
-
-
 		JsonObject query = new JsonObject();
 		query.put("_id", limitId);
 
@@ -57,28 +54,45 @@ public class LimitService extends AbstractVerticle implements LimitRepository {
 						result.onSuccess(res.result());
 					}
 				} else {
-					System.out.println(res.cause());
+					result.onError(new Exception("System error, please try again later!"));
 				}
 			});
 		});
 	}
 
 	@Override
-	public Single<JsonObject> checkLimit(String limitId) {
-		JsonObject query = new JsonObject();
-		query.put("_id", limitId);
-		return Single.create(result -> {
-			client.findOne(Collection.CLAZZ, query, null, res -> {
-				if (res.succeeded()) {
-					if (res.result() == null) {
-						result.onError(new NoSuchElementException("The limit ID does not exist"));
-					} else {
-						result.onSuccess(res.result());
-					}
+	public void limitAction(String limitId, Future<Boolean> future, String action) {
+		JsonObject limitQuery = new JsonObject();
+		limitQuery.put("_id", limitId);
+		client.findOne(Collection.CLAZZ, limitQuery, null, res -> {
+			if (res.succeeded()) {
+				if (res.result() == null) {
+					future.fail("Class does not exist");
 				} else {
-					System.out.println(res.cause());
+					int maximum = res.result().getInteger("maximum");
+					int total = res.result().getInteger("totoal");
+					if (total == maximum) {
+						future.fail("The allowed limit has been reached!");
+					} else {
+						JsonObject limitUpdate = new JsonObject();
+						total = action.equalsIgnoreCase(LimitAction.INCREASE) ? (total + 1) : (total - 1);
+						limitUpdate.put("$set", new JsonObject().put("total", total + 1));
+						client.findOneAndUpdate(Collection.LIMIT, limitQuery, limitUpdate, res2 -> {
+							if (res2.succeeded()) {
+								if (res2.result() == null) {
+									future.fail("Class does not exist");
+								} else {
+									future.complete();
+								}
+							} else {
+								future.fail("System error, please try again later!");
+							}
+						});
+					}
 				}
-			});
+			} else {
+				future.fail("System error, please try again later!");
+			}
 		});
 	}
 }

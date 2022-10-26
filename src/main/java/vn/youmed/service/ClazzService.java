@@ -5,21 +5,18 @@ import java.util.List;
 import java.util.NoSuchElementException;
 
 import io.reactivex.Single;
-import io.vertx.core.AbstractVerticle;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.mongo.MongoClient;
-import vn.youmed.config.DBConfig;
 import vn.youmed.constant.Collection;
 import vn.youmed.model.Clazz;
 import vn.youmed.repository.ClazzRepository;
 
-public class ClazzService extends AbstractVerticle implements ClazzRepository {
+public class ClazzService implements ClazzRepository {
 
-	static MongoClient client;
+	private final MongoClient client;
 
-	@Override
-	public void start() {
-		client = MongoClient.createShared(vertx, DBConfig.dbConfig());
+	public ClazzService(MongoClient client) {
+		this.client = client;
 	}
 
 	@Override
@@ -33,7 +30,7 @@ public class ClazzService extends AbstractVerticle implements ClazzRepository {
 						result.onSuccess(new JsonObject(res.result()));
 					}
 				} else {
-					System.out.println(res.cause());
+					result.onError(new Exception("System error, please try again later!"));
 				}
 			});
 		});
@@ -50,7 +47,7 @@ public class ClazzService extends AbstractVerticle implements ClazzRepository {
 						result.onSuccess(res.result());
 					}
 				} else {
-					System.out.println(res.cause());
+					result.onError(new Exception("System error, please try again later!"));
 				}
 			});
 		});
@@ -69,7 +66,7 @@ public class ClazzService extends AbstractVerticle implements ClazzRepository {
 						result.onSuccess(res.result());
 					}
 				} else {
-					System.out.println(res.cause());
+					result.onError(new Exception("System error, please try again later!"));
 				}
 			});
 		});
@@ -90,7 +87,7 @@ public class ClazzService extends AbstractVerticle implements ClazzRepository {
 						result.onSuccess(res.result());
 					}
 				} else {
-					System.out.println(res.cause());
+					result.onError(new Exception("System error, please try again later!"));
 				}
 			});
 		});
@@ -110,7 +107,7 @@ public class ClazzService extends AbstractVerticle implements ClazzRepository {
 					}
 
 				} else {
-					System.out.println(res.cause());
+					result.onError(new Exception("System error, please try again later!"));
 				}
 			});
 

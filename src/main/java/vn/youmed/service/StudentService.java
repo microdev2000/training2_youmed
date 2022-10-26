@@ -5,75 +5,47 @@ import java.util.List;
 import java.util.NoSuchElementException;
 
 import io.reactivex.Single;
-import io.vertx.core.AbstractVerticle;
+import io.vertx.core.Future;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.mongo.MongoClient;
-import vn.youmed.config.DBConfig;
 import vn.youmed.constant.Collection;
+import vn.youmed.constant.LimitAction;
 import vn.youmed.model.Student;
 import vn.youmed.repository.StudentRepository;
 
-public class StudentService extends AbstractVerticle implements StudentRepository {
-
-	static MongoClient client;
-
-	@Override
-	public void start() {
-		client = MongoClient.createShared(vertx, DBConfig.dbConfig());
+public class StudentService implements StudentRepository {
+	
+	private final MongoClient client;
+	
+	public StudentService(MongoClient client) {
+		this.client = client;
 	}
-
+	
 	@Override
 	public Single<JsonObject> addStudent(Student student) {
+		String limitId = JsonObject.mapFrom(student).getString("clazzId");
 		return Single.create(result -> {
-			client.insert(Collection.STUDENT, JsonObject.mapFrom(student), res -> {
-				if (res.succeeded()) {
-					if (res.result() == null) {
-						result.onError(new Exception("Student already exist"));
-					} else {
-						String clazzAndLimit = new JsonObject(res.result()).getString("clazz");
-						JsonObject queryClazzAndLimit = new JsonObject();
-						queryClazzAndLimit.put("_id", clazzAndLimit);
-						client.findOne(Collection.CLAZZ, queryClazzAndLimit, null, res1 -> {
-							if (res1.succeeded()) {
-								if (res1.result() == null) {
-									result.onError(new Exception("Class does not exist!"));
-								} else {
-									client.findOne(Collection.LIMIT, queryClazzAndLimit, null, res2 -> {
-										if (res2.succeeded()) {
-											if (res2.result() == null) {
-												result.onError(new Exception("Limit ID does not exist!"));
-											} else {
-												int maximum = res2.result().getInteger("maximum");
-												int total = res2.result().getInteger("total");
-												if (total == maximum) {
-													result.onError(new Exception("Total student over limit"));
-													return;
-												}
-												JsonObject updateLimit = new JsonObject();
-												updateLimit.put("$set", new JsonObject().put("total", total + 1));
-												client.findOneAndUpdate(Collection.LIMIT, queryClazzAndLimit,
-														updateLimit, res3 -> {
-															if (res3.failed()) {
-																System.out.println(res3.cause());
-															}
-														});
-											}
-										} else {
-											System.out.println(res2.cause());
-
-										}
-									});
-								}
-							} else {
-								System.out.println(res1.cause());
-
-							}
-						});
-					}
+			Future<Boolean> checkLimit = Future.future();
+			LimitService limitService = new LimitService(client);
+			limitService.limitAction(limitId, checkLimit, LimitAction.INCREASE);
+			checkLimit.setHandler(res -> {
+				if (res.failed()) {
+					result.onError(new Exception(res.cause().getMessage()));
 				} else {
-					System.out.println(res.cause());
+					client.insert(Collection.STUDENT, JsonObject.mapFrom(student), res2 -> {
+						if (res2.succeeded()) {
+							if (res2.result() == null) {
+								result.onError(new Exception("Student already exist1"));
+							} else {
+								result.onSuccess(new JsonObject(res2.result()));
+							}
+						} else {
+							result.onError(new Exception("System error, please try again later!"));
+						}
+					});
 				}
 			});
+
 		});
 	}
 
@@ -88,7 +60,7 @@ public class StudentService extends AbstractVerticle implements StudentRepositor
 						result.onSuccess(res.result());
 					}
 				} else {
-					System.out.println(res.cause());
+					result.onError(new Exception("System error, please try again later!"));
 				}
 			});
 		});
@@ -105,7 +77,7 @@ public class StudentService extends AbstractVerticle implements StudentRepositor
 						result.onSuccess(res.result());
 					}
 				} else {
-					System.out.println(res.cause());
+					result.onError(new Exception("System error, please try again later!"));
 				}
 			});
 		});
@@ -127,7 +99,7 @@ public class StudentService extends AbstractVerticle implements StudentRepositor
 						result.onSuccess(res.result());
 					}
 				} else {
-					System.out.println(res.cause());
+					result.onError(new Exception("System error, please try again later!"));
 				}
 			});
 		});
@@ -135,38 +107,28 @@ public class StudentService extends AbstractVerticle implements StudentRepositor
 
 	@Override
 	public Single<JsonObject> deleteStudent(String clazzId) {
-		JsonObject query = new JsonObject();
-		query.put("_id", clazzId);
 		return Single.create(result -> {
-			client.findOneAndDelete(Collection.STUDENT, query, res -> {
-				if (res.succeeded()) {
-					if (res.result() == null) {
-						result.onError(new NoSuchElementException("Student does not exist"));
-					} else {
-						String limitId = res.result().getString("clazz");
-						JsonObject queryLimit = new JsonObject();
-						queryLimit.put("_id", limitId);
-						client.findOne(Collection.LIMIT, new JsonObject().put("_id", limitId), null, res1 -> {
-							if (res1.succeeded()) {
-								if (res1.result() == null) {
-									result.onError(new NoSuchElementException("Limit ID does not exist"));
-								} else {
-									int total = res.result().getInteger("total");
-									JsonObject updateLimit = new JsonObject();
-									updateLimit.put("$set", new JsonObject().put("total", total - 1));
-									client.findOneAndUpdate(Collection.LIMIT, query, updateLimit, res2 -> {
-										if (res2.failed()) {
-											System.out.println(res2.cause());
-										}
-									});
-								}
-							} else {
-								System.out.println(res.cause());
-							}
-						});
-					}
+			Future<Boolean> future = Future.future();
+
+			JsonObject query = new JsonObject();
+			query.put("_id", clazzId);
+			new LimitService(client).limitAction(clazzId, future, LimitAction.REDUCED);
+			future.setHandler(res -> {
+				if (res.failed()) {
+					result.onError(new Exception(res.cause().getMessage()));
 				} else {
-					System.out.println(res.cause());
+					client.findOneAndDelete(clazzId, query, res2 -> {
+						if (res2.succeeded()) {
+							if (res2.result() == null) {
+								result.onError(new Exception("Student does not exits"));
+							} else {
+								result.onSuccess(new JsonObject());
+							}
+						} else {
+							result.onError(new Exception("System error, please try again later!"));
+
+						}
+					});
 				}
 			});
 
