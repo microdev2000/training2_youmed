@@ -165,12 +165,12 @@ public class ClazzService implements ClazzRepository {
 				} else {
 					int maximum = res.result().getInteger("maximum");
 					int total = res.result().getInteger("totoal");
-					if (total == maximum) {
+					if (total == maximum || maximum < total) {
 						future.fail("The allowed limit has been reached!");
 					} else {
 						JsonObject limitUpdate = new JsonObject();
 						total = action.equalsIgnoreCase(LimitAction.INCREASE) ? (total + 1) : (total - 1);
-						limitUpdate.put("$set", new JsonObject().put("total", total + 1));
+						limitUpdate.put("$set", new JsonObject().put("total", total));
 						client.findOneAndUpdate(Collection.LIMIT, limitQuery, limitUpdate, res2 -> {
 							if (res2.succeeded()) {
 								if (res2.result() == null) {
